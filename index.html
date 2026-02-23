@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Journey Through John — Complete Interactive Game</title>
+  <style>
+    :root{
+      --bg:#0f1226;           /* deep night */
+      --bg-soft:#14183a;      /* card background */
+      --ink:#e7e9ff;          /* text */
+      --muted:#b7c0ff;        /* muted text */
+      --accent:#6fd3ff;       /* light accent */
+      --accent-2:#b0ff7a;     /* success */
+      --warn:#ffb15e;         /* warning */
+      --danger:#ff6f6f;       /* wrong */
+      --shadow: 0 10px 40px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% -10%, #2a2d58 0, #171a3b 40%, #0f1226 100%);
+      color:var(--ink);
+    }
+    .app{max-width:1100px; margin:0 auto; padding:24px;}
+    header{
+      display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px;
+    }
+    .brand{display:flex; align-items:center; gap:12px}
+    .brand .logo{width:44px; height:44px; border-radius:50%; background: conic-gradient(from 180deg, #ffd76f, #9bf, #b0ff7a, #ffd76f); box-shadow: var(--shadow)}
+    .brand h1{font-size:clamp(20px, 3vw, 28px); margin:0}
+    .topbar{
+      margin-left:auto; display:flex; gap:10px; flex-wrap:wrap; align-items:center
+    }
+    .badge{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); padding:8px 12px; border-radius:999px; font-weight:600}
+    .btn{cursor:pointer; border:0; padding:10px 14px; border-radius:10px; background:linear-gradient(180deg, #2a2f6f, #1c214f); color:var(--ink); box-shadow: var(--shadow); font-weight:700}
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .ghost{background:transparent; border:1px solid rgba(255,255,255,.18)}
+
+    .grid{
+      display:grid; grid-template-columns: 280px 1fr; gap:16px;
+    }
+    @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+
+    /* Map / Chapter List */
+    .panel{background:var(--bg-soft); border:1px solid rgba(255,255,255,.12); border-radius:var(--radius); box-shadow:var(--shadow);}
+    .panel h2{margin:0; padding:16px; border-bottom:1px solid rgba(255,255,255,.08); font-size:18px; color:var(--muted)}
+    .chapters{padding:10px; max-height:70vh; overflow:auto}
+    .chapter-item{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; border-radius:12px; cursor:pointer; transition:.15s; border:1px solid transparent}
+    .chapter-item:hover{background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.08)}
+    .chapter-item.locked{opacity:.55; cursor:not-allowed}
+    .chapter-item .title{font-weight:700}
+    .chapter-item .meta{font-size:12px; color:var(--muted)}
+    .token{display:inline-flex; align-items:center; gap:6px; background:rgba(176,255,122,.12); border:1px solid rgba(176,255,122,.25); padding:4px 8px; border-radius:999px; font-size:12px}
+
+    /* Main stage */
+    .stage{padding:0}
+    .stage .inner{padding:18px}
+    .tabs{display:flex; gap:8px; padding:12px; border-bottom:1px solid rgba(255,255,255,.08)}
+    .tab{padding:8px 12px; border-radius:999px; font-weight:700; cursor:pointer; border:1px solid rgba(255,255,255,.14)}
+    .tab.active{background:linear-gradient(180deg, #2a2f6f, #1c214f)}
+
+    .story{line-height:1.6}
+    .story h3{margin:8px 0 6px}
+    .story .key-verse{margin:12px 0; padding:12px; border-radius:12px; background:rgba(255,255,255,.06); border:1px dashed rgba(255,255,255,.15); font-style:italic}
+    .story small{color:var(--muted)}
+
+    .gamebox{display:flex; flex-direction:column; gap:12px}
+    .question{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:14px; border-radius:12px}
+    .answers{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    @media (max-width: 600px){ .answers{grid-template-columns:1fr} }
+    .answer{border:1px solid rgba(255,255,255,.18); padding:10px; border-radius:12px; cursor:pointer}
+    .answer.selected{outline:2px solid var(--accent)}
+    .answer.correct{background:rgba(176,255,122,.15); border-color:var(--accent-2)}
+    .answer.wrong{background:rgba(255,111,111,.12); border-color:var(--danger)}
+
+    .controls{display:flex; gap:10px; justify-content:flex-end}
+
+    .toast{position:fixed; inset:auto 16px 16px auto; background:#10152f; border:1px solid rgba(255,255,255,.18); padding:12px 14px; border-radius:12px; box-shadow:var(--shadow); display:none; z-index:999}
+
+    .drag-list{display:flex; gap:8px; flex-wrap:wrap}
+    .drag-item{padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); cursor:grab}
+    .drop-zone{min-height:48px; display:flex; flex-wrap:wrap; gap:8px; padding:10px; border-radius:10px; border:2px dashed rgba(255,255,255,.18)}
+
+    .progress{height:10px; background:rgba(255,255,255,.1); border-radius:999px; overflow:hidden}
+    .progress > div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-2)); width:0%}
+
+    footer{margin-top:18px; font-size:12px; color:var(--muted); text-align:center}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo"></div>
+        <h1>Journey Through John</h1>
+      </div>
+      <div class="topbar">
+        <span class="badge" id="playerName">Traveler</span>
+        <span class="badge" id="tokenCount">Faith Tokens: 0</span>
+        <span class="badge" id="chapterStatus">Chapter 1 / 21</span>
+        <span class="badge" id="testStatus" title="Built-in self-tests">Tests: running…</span>
+        <button class="btn ghost" id="resetBtn" title="Reset all progress">Reset</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Map of Chapters</h2>
+        <div class="chapters" id="chapterList"></div>
+      </section>
+
+      <section class="panel stage">
+        <div class="tabs">
+          <div class="tab active" data-tab="story">Story</div>
+          <div class="tab" data-tab="quiz">Quiz</div>
+          <div class="tab" data-tab="verse">Verse Fill-in</div>
+          <div class="tab" data-tab="order">Order Events</div>
+        </div>
+        <div class="inner" id="tabContent">
+          <!-- dynamic -->
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      Made with ♥ to help kids learn the Gospel of John. Verses are from the King James Version (public domain).
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /***************************************
+     * Data Model (Full 21 Chapters)
+     **************************************/
+    const chapters = [
+      {
+        num: 1,
+        title: "The Word Became Flesh",
+        summary: `John introduces Jesus as the eternal Word who was with God and is God. John the Baptist prepares the way. Jesus calls His first disciples, including Andrew, Peter, Philip, and Nathanael.`,
+        keyVerse: { text: "In the beginning was the Word, and the Word was with God, and the Word was God.", ref: "John 1:1" },
+        quiz: [
+          { q: "Who is called 'the Word' in John 1?", options: ["Moses","John the Baptist","Jesus","Peter"], a: 2 },
+          { q: "What did John the Baptist come to do?", options: ["Write laws","Prepare the way for Jesus","Lead an army","Build the Temple"], a: 1 },
+          { q: "Where was the Word in the beginning?", options: ["With God","In Bethlehem","In the desert","On a mountain"], a: 0 }
+        ],
+        verseFill: {
+          base: "In the beginning was the ____ , and the ____ was with God, and the ____ was God.",
+          choices: ["Word","Law","Light","Spirit"],
+          missing: ["Word","Word","Word"]
+        },
+        order: {
+          prompt: "Put these events from John 1 in order:",
+          steps: [
+            "John the Baptist says he is a voice in the wilderness",
+            "Jesus calls Andrew and Peter",
+            "Philip brings Nathanael to Jesus"
+          ]
+        }
+      },
+      {
+        num: 2,
+        title: "Water into Wine",
+        summary: `At a wedding in Cana, Jesus turns water into wine—His first miracle. Later, He travels to Jerusalem and clears the Temple of money changers.`,
+        keyVerse: { text: "This beginning of miracles did Jesus in Cana of Galilee, and manifested forth his glory.", ref: "John 2:11" },
+        quiz: [
+          { q: "Where did Jesus turn water into wine?", options: ["Nazareth","Cana","Jerusalem","Bethany"], a: 1 },
+          { q: "Whose wedding was it?", options: ["We aren't told","Peter's","Mary's","John's"], a: 0 },
+          { q: "What did Jesus do in the Temple?", options: ["Taught parables","Healed a blind man","Drove out sellers","Fed 5,000"], a: 2 }
+        ],
+        verseFill: {
+          base: "This beginning of ____ did Jesus in Cana of Galilee, and manifested forth his glory.",
+          choices: ["parables","miracles","trips","sermons"],
+          missing: ["miracles"]
+        },
+        order: {
+          prompt: "Put John 2 events in order:",
+          steps: [
+            "The wedding in Cana runs out of wine",
+            "Jesus turns water into wine",
+            "Jesus cleanses the Temple"
+          ]
+        }
+      },
+      {
+        num: 3,
+        title: "Jesus and Nicodemus",
+        summary: `A Pharisee named Nicodemus visits Jesus at night. Jesus teaches him that one must be 'born again' to see God's Kingdom.`,
+        keyVerse: { text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.", ref: "John 3:16" },
+        quiz: [
+          { q: "When did Nicodemus visit Jesus?", options: ["Morning","Noon","Night","Sabbath"], a: 2 },
+          { q: "What must a person be to see the kingdom of God?", options: ["Rich","Born again","A priest","A Pharisee"], a: 1 },
+          { q: "What moved God to give His Son?", options: ["Anger","Love","Fear","Duty"], a: 1 }
+        ],
+        verseFill: {
+          base: "For God so ____ the world, that he gave his only begotten Son...",
+          choices: ["judged","ignored","loved","told"],
+          missing: ["loved"]
+        },
+        order: {
+          prompt: "Order the ideas in John 3:",
+          steps: [
+            "Nicodemus comes to Jesus by night",
+            "Jesus explains being born of the Spirit",
+            "John the Baptist says 'He must increase, but I must decrease'"
+          ]
+        }
+      },
+      {
+        num: 4,
+        title: "Woman at the Well",
+        summary: `Jesus meets a Samaritan woman at Jacob's well. He reveals He is the Messiah and offers 'living water'. Many Samaritans believe.`,
+        keyVerse: { text: "But whosoever drinketh of the water that I shall give him shall never thirst.", ref: "John 4:14" },
+        quiz: [
+          { q: "Where did Jesus meet the woman?", options: ["Jordan River","Jacob's well","Sea of Galilee","Temple"], a: 1 },
+          { q: "What kind of water did Jesus offer?", options: ["Bitter","Living","Salt","Hidden"], a: 1 },
+          { q: "Who believed because of the woman's testimony?", options: ["Pharisees","Samaritans","Romans","Herodians"], a: 1 }
+        ],
+        verseFill: {
+          base: "Whosoever drinketh of the ____ that I shall give him shall never thirst.",
+          choices: ["wine","living water","rain","milk"],
+          missing: ["living water"]
+        },
+        order: {
+          prompt: "Put John 4 events in order:",
+          steps: [
+            "Jesus asks the Samaritan woman for a drink",
+            "Jesus says He is the Messiah",
+            "The woman leaves her waterpot to tell the city"
+          ]
+        }
+      },
+      {
+        num: 5,
+        title: "Healing at Bethesda",
+        summary: `Jesus heals a man who had been unable to walk for 38 years at the pool of Bethesda. This happens on the Sabbath, angering the leaders.`,
+        keyVerse: { text: "For as the Father raiseth up the dead, and quickeneth them; even so the Son quickeneth whom he will.", ref: "John 5:21" },
+        quiz: [
+          { q: "Where was the sick man healed?", options: ["Nazareth","Pool of Bethesda","Capernaum","Gethsemane"], a: 1 },
+          { q: "What day was it when Jesus healed him?", options: ["Passover","Sabbath","A feast day","We don't know"], a: 1 },
+          { q: "Who gives life like the Father?", options: ["John","Moses","The Son","Angels"], a: 2 }
+        ],
+        verseFill: {
+          // Fixed Issue: Choices must be individual strings matching 'missing' exactly
+          base: "For as the Father ____ up the dead... even so the Son ____ whom he will.",
+          choices: ["raiseth", "quickeneth", "judgeth", "destroyeth"],
+          missing: ["raiseth","quickeneth"]
+        },
+        order: {
+          prompt: "Order these from John 5:",
+          steps: [
+            "Jesus asks, 'Wilt thou be made whole?'",
+            "The man takes up his bed and walks",
+            "Jewish leaders persecute Jesus for working on the Sabbath"
+          ]
+        }
+      },
+      {
+        num: 6,
+        title: "Bread of Life",
+        summary: `Jesus feeds 5,000 people and walks on water. He teaches that He is the Bread of Life, and many disciples find this teaching hard and leave.`,
+        keyVerse: { text: "I am the bread of life: he that cometh to me shall never hunger.", ref: "John 6:35" },
+        quiz: [
+          { q: "How many people did Jesus feed?", options: ["1,000","3,000","5,000 men","12"], a: 2 },
+          { q: "What miracle happened on the sea?", options: ["Parted the sea","Walked on water","Caught 153 fish","Storm stopped instantly"], a: 1 },
+          { q: "What did Jesus call Himself?", options: ["Bread of Life","The Vine","The Gate","The Rock"], a: 0 }
+        ],
+        verseFill: {
+          base: "I am the ____ of life: he that cometh to me shall never ____.",
+          choices: ["bread","hunger","thirst","light"],
+          missing: ["bread","hunger"]
+        },
+        order: {
+          prompt: "Order these events:",
+          steps: [
+            "A lad offers five loaves and two fishes",
+            "Jesus walks on the sea toward the boat",
+            "Peter says 'Thou hast the words of eternal life'"
+          ]
+        }
+      },
+      {
+        num: 7,
+        title: "Rivers of Living Water",
+        summary: `Jesus goes to the Feast of Tabernacles in secret. He teaches in the Temple, causing division among the people about whether He is the Christ.`,
+        keyVerse: { text: "He that believeth on me, as the scripture hath said, out of his belly shall flow rivers of living water.", ref: "John 7:38" },
+        quiz: [
+          { q: "What feast was happening?", options: ["Passover","Tabernacles","Pentecost","Purim"], a: 1 },
+          { q: "What did Jesus say would flow from believers?", options: ["Gold","Living water","Honey","Light"], a: 1 },
+          { q: "Did Jesus' brothers initially believe in Him?", options: ["Yes","No","They were unsure","The Bible doesn't say"], a: 1 }
+        ],
+        verseFill: {
+          base: "Out of his belly shall flow ____ of ____ water.",
+          choices: ["rivers","living","streams","holy"],
+          missing: ["rivers","living"]
+        },
+        order: {
+          prompt: "Timeline of John 7:",
+          steps: [
+            "Jesus' brothers tell Him to go to Judea",
+            "Jesus teaches in the Temple during the feast",
+            "Officers are sent to arrest Him but do not"
+          ]
+        }
+      },
+      {
+        num: 8,
+        title: "Light of the World",
+        summary: `Jesus forgives a woman caught in adultery. He declares 'I am the Light of the World' and claims eternal existence saying, 'Before Abraham was, I am.'`,
+        keyVerse: { text: "I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.", ref: "John 8:12" },
+        quiz: [
+          { q: "What did Jesus write when the woman was accused?", options: ["Her sins","The Law","We don't know","Names of accusers"], a: 2 },
+          { q: "What title did Jesus use in this chapter?", options: ["Bread of Life","Light of the World","Good Shepherd","True Vine"], a: 1 },
+          { q: "How did Jesus describe His age relative to Abraham?", options: ["Younger","Older","Before Abraham was, I am","Descendant of Abraham"], a: 2 }
+        ],
+        verseFill: {
+          base: "He that followeth me shall not walk in ____, but shall have the ____ of life.",
+          choices: ["darkness","light","shadows","truth"],
+          missing: ["darkness","light"]
+        },
+        order: {
+          prompt: "Order the events of John 8:",
+          steps: [
+            "Accusers bring a woman caught in adultery",
+            "Jesus says 'He that is without sin, let him first cast a stone'",
+            "Jesus claims 'Before Abraham was, I am'"
+          ]
+        }
+      },
+      {
+        num: 9,
+        title: "The Man Born Blind",
+        summary: `Jesus heals a man born blind by using clay and the pool of Siloam. The Pharisees investigate the healing and cast the man out of the synagogue.`,
+        keyVerse: { text: "One thing I know, that, whereas I was blind, now I see.", ref: "John 9:25" },
+        quiz: [
+          { q: "Why did the disciples think the man was blind?", options: ["Accident","Sin","Old age","Curse"], a: 1 },
+          { q: "What did Jesus use to heal him?", options: ["Clay/Spittle","Just a word","Holy water","Touch only"], a: 0 },
+          { q: "Where did the man wash?", options: ["Jordan","Siloam","Bethesda","Galilee"], a: 1 }
+        ],
+        verseFill: {
+          base: "One thing I know, that, whereas I was ____, now I ____.",
+          choices: ["blind","see","lost","found"],
+          missing: ["blind","see"]
+        },
+        order: {
+          prompt: "Sequence of the healing:",
+          steps: [
+            "Jesus makes clay and anoints the man's eyes",
+            "The man washes in the Pool of Siloam",
+            "The man worships Jesus as the Son of God"
+          ]
+        }
+      },
+      {
+        num: 10,
+        title: "The Good Shepherd",
+        summary: `Jesus describes Himself as the Good Shepherd who lays down His life for the sheep. He explains that He and the Father are one.`,
+        keyVerse: { text: "I am the good shepherd: the good shepherd giveth his life for the sheep.", ref: "John 10:11" },
+        quiz: [
+          { q: "Who enters by the door?", options: ["Thief","Robber","Shepherd","Stranger"], a: 2 },
+          { q: "What does the good shepherd do?", options: ["Runs away","Gives his life","Sleeps","Sells sheep"], a: 1 },
+          { q: "Jesus said, 'I and my Father are...'", options: ["Two","Friends","One","Separate"], a: 2 }
+        ],
+        verseFill: {
+          base: "I am the ____ shepherd: the good shepherd giveth his ____ for the sheep.",
+          choices: ["good","life","great","time"],
+          missing: ["good","life"]
+        },
+        order: {
+          prompt: "Order the teachings:",
+          steps: [
+            "Jesus says He is the Door of the sheep",
+            "Jesus says He is the Good Shepherd",
+            "Jews take up stones again to stone Him"
+          ]
+        }
+      },
+      {
+        num: 11,
+        title: "The Resurrection of Lazarus",
+        summary: `Lazarus dies. Jesus waits, then goes to Bethany. He declares 'I am the resurrection' and raises Lazarus from the dead.`,
+        keyVerse: { text: "I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.", ref: "John 11:25" },
+        quiz: [
+          { q: "How long had Lazarus been in the grave?", options: ["1 day","2 days","3 days","4 days"], a: 3 },
+          { q: "Which sister ran to meet Jesus first?", options: ["Mary","Martha","Salome","Joanna"], a: 1 },
+          { q: "What is the shortest verse in the Bible (found here)?", options: ["Jesus wept","God is love","Pray always","Rejoice"], a: 0 }
+        ],
+        verseFill: {
+          base: "I am the ____, and the ____.",
+          choices: ["resurrection","life","truth","way"],
+          missing: ["resurrection","life"]
+        },
+        order: {
+          prompt: "Sequence of the miracle:",
+          steps: [
+            "Jesus hears Lazarus is sick but stays two days",
+            "Jesus commands 'Take ye away the stone'",
+            "Lazarus comes forth bound in graveclothes"
+          ]
+        }
+      },
+      {
+        num: 12,
+        title: "The Triumphal Entry",
+        summary: `Mary anoints Jesus' feet with costly ointment. Jesus enters Jerusalem on a young donkey. He predicts His death to glorify God.`,
+        keyVerse: { text: "Hosanna: Blessed is the King of Israel that cometh in the name of the Lord.", ref: "John 12:13" },
+        quiz: [
+          { q: "What did Mary use to wipe Jesus' feet?", options: ["Towel","Her hair","Water","Leaves"], a: 1 },
+          { q: "Who complained about the waste of ointment?", options: ["Peter","Judas","John","Thomas"], a: 1 },
+          { q: "What animal did Jesus ride?", options: ["Horse","Camel","Young donkey","Mule"], a: 2 }
+        ],
+        verseFill: {
+          base: "Blessed is the ____ of Israel that cometh in the ____ of the Lord.",
+          choices: ["King","name","Prophet","glory"],
+          missing: ["King","name"]
+        },
+        order: {
+          prompt: "Order the events of John 12:",
+          steps: [
+            "Mary anoints Jesus with spikenard",
+            "Jesus rides into Jerusalem with palm branches waving",
+            "Jesus says 'The hour is come'"
+          ]
+        }
+      },
+      {
+        num: 13,
+        title: "The Last Supper",
+        summary: `Jesus washes the disciples' feet as an example of humility. He predicts Judas' betrayal and gives a new commandment to love one another.`,
+        keyVerse: { text: "A new commandment I give unto you, That ye love one another; as I have loved you.", ref: "John 13:34" },
+        quiz: [
+          { q: "What did Jesus wash?", options: ["Hands","Head","Feet","Clothes"], a: 2 },
+          { q: "Who initially refused to let Jesus wash him?", options: ["John","Judas","Peter","James"], a: 2 },
+          { q: "How will people know we are disciples?", options: ["By our clothes","By our love","By our miracles","By our speech"], a: 1 }
+        ],
+        verseFill: {
+          base: "That ye ____ one another; as I have ____ you.",
+          choices: ["love","loved","serve","served"],
+          missing: ["love","loved"]
+        },
+        order: {
+          prompt: "Timeline of the supper:",
+          steps: [
+            "Jesus washes the disciples' feet",
+            "Jesus gives the sop to Judas",
+            "Jesus gives the new commandment"
+          ]
+        }
+      },
+      {
+        num: 14,
+        title: "The Way, The Truth, The Life",
+        summary: `Jesus comforts His disciples, promising to prepare a place for them. He promises the Holy Spirit (the Comforter).`,
+        keyVerse: { text: "Jesus saith unto him, I am the way, the truth, and the life: no man cometh unto the Father, but by me.", ref: "John 14:6" },
+        quiz: [
+          { q: "What did Jesus say He was going to prepare?", options: ["A meal","A place/mansion","A sermon","A kingdom on earth"], a: 1 },
+          { q: "Who is the Comforter?", options: ["Peter","The Holy Ghost","An angel","Moses"], a: 1 },
+          { q: "If we love Jesus, what will we do?", options: ["Keep His commandments","Build temples","Fast daily","Memorize the law"], a: 0 }
+        ],
+        verseFill: {
+          base: "I am the ____, the ____, and the ____.",
+          choices: ["way","truth","life","light"],
+          missing: ["way","truth","life"]
+        },
+        order: {
+          prompt: "Order Jesus' comforting words:",
+          steps: [
+            "Let not your heart be troubled",
+            "I am the way, the truth, and the life",
+            "I will pray the Father, and he shall give you another Comforter"
+          ]
+        }
+      },
+      {
+        num: 15,
+        title: "The True Vine",
+        summary: `Jesus teaches that He is the Vine and His followers are branches. We must abide in Him to bear fruit. He calls us friends, not servants.`,
+        keyVerse: { text: "I am the vine, ye are the branches: He that abideth in me, and I in him, the same bringeth forth much fruit.", ref: "John 15:5" },
+        quiz: [
+          { q: "What happens to a branch that bears no fruit?", options: ["Pruned","Taken away","Watered","Fed"], a: 1 },
+          { q: "What is the greatest love?", options: ["Giving money","Laying down one's life","Teaching","Singing"], a: 1 },
+          { q: "Jesus called them not servants, but...", options: ["Slaves","Friends","Soldiers","Kings"], a: 1 }
+        ],
+        verseFill: {
+          base: "I am the ____, ye are the ____.",
+          choices: ["vine","branches","tree","roots"],
+          missing: ["vine","branches"]
+        },
+        order: {
+          prompt: "Logical flow of the chapter:",
+          steps: [
+            "Abide in the vine to bear fruit",
+            "Love one another as I have loved you",
+            "The world will hate you because it hated Me"
+          ]
+        }
+      },
+      {
+        num: 16,
+        title: "Sorrow Turned to Joy",
+        summary: `Jesus explains the work of the Holy Spirit: to reprove the world of sin, righteousness, and judgment. He predicts His death and resurrection causing sorrow then joy.`,
+        keyVerse: { text: "These things I have spoken unto you, that in me ye might have peace.", ref: "John 16:33" },
+        quiz: [
+          { q: "The Spirit will guide them into...", options: ["Wealth","All truth","Political power","Safety"], a: 1 },
+          { q: "Why was it expedient (good) for Jesus to go away?", options: ["To sleep","To send the Comforter","To hide","To fight"], a: 1 },
+          { q: "Jesus said: In the world ye shall have...", options: ["Tribulation","Fun","Ease","Money"], a: 0 }
+        ],
+        verseFill: {
+          base: "In the world ye shall have ____: but be of good ____; I have overcome the world.",
+          choices: ["tribulation","cheer","trouble","faith"],
+          missing: ["tribulation","cheer"]
+        },
+        order: {
+          prompt: "Order the teachings:",
+          steps: [
+            "It is expedient for you that I go away",
+            "Your sorrow shall be turned into joy",
+            "Be of good cheer, I have overcome the world"
+          ]
+        }
+      },
+      {
+        num: 17,
+        title: "The High Priestly Prayer",
+        summary: `Jesus prays to the Father before His arrest. He prays for Himself, His disciples, and for all future believers (us) to be one.`,
+        keyVerse: { text: "And this is life eternal, that they might know thee the only true God, and Jesus Christ, whom thou hast sent.", ref: "John 17:3" },
+        quiz: [
+          { q: "Who did Jesus pray for?", options: ["Only Himself","Only the 12","Himself, Disciples, and future believers","The Romans"], a: 2 },
+          { q: "What is eternal life according to verse 3?", options: ["Living forever","Knowing God and Jesus","Going to heaven","Being rich"], a: 1 },
+          { q: "Jesus prayed that they all might be...", options: ["Rich","Powerful","One","Famous"], a: 2 }
+        ],
+        verseFill: {
+          base: "That they might ____ thee the only true ____.",
+          choices: ["know","God","love","King"],
+          missing: ["know","God"]
+        },
+        order: {
+          prompt: "Structure of the prayer:",
+          steps: [
+            "Jesus prays: Glorify thy Son",
+            "Jesus prays for the disciples He kept",
+            "Jesus prays for those who will believe through their word"
+          ]
+        }
+      },
+      {
+        num: 18,
+        title: "Arrest and Trial",
+        summary: `Jesus is betrayed by Judas in a garden. Peter cuts off an ear. Jesus is tried before the high priest and Pilate. Peter denies Jesus three times.`,
+        keyVerse: { text: "Jesus answered, My kingdom is not of this world.", ref: "John 18:36" },
+        quiz: [
+          { q: "Which disciple cut off the servant's ear?", options: ["John","Peter","James","Andrew"], a: 1 },
+          { q: "How many times did Peter deny Jesus?", options: ["Once","Twice","Thrice","Seven times"], a: 2 },
+          { q: "What did Jesus tell Pilate about His kingdom?", options: ["It is of this world","It is not of this world","It is in Rome","It is over"], a: 1 }
+        ],
+        verseFill: {
+          base: "My ____ is not of this ____.",
+          choices: ["kingdom","world","rule","land"],
+          missing: ["kingdom","world"]
+        },
+        order: {
+          prompt: "Events of the arrest:",
+          steps: [
+            "Judas arrives with a band of men",
+            "Peter denies Jesus while warming himself",
+            "Jesus stands before Pilate"
+          ]
+        }
+      },
+      {
+        num: 19,
+        title: "The Crucifixion",
+        summary: `Pilate sentences Jesus. He is crucified at Golgotha. He says 'It is finished' and dies. Joseph of Arimathea and Nicodemus bury Him.`,
+        keyVerse: { text: "When Jesus therefore had received the vinegar, he said, It is finished.", ref: "John 19:30" },
+        quiz: [
+          { q: "What title was put on the cross?", options: ["Criminal","King of the Jews","Carpenter","Teacher"], a: 1 },
+          { q: "What were Jesus' last words in John?", options: ["I thirst","It is finished","Why have you forsaken me","Father"], a: 1 },
+          { q: "Who helped bury Jesus?", options: ["Joseph of Arimathea & Nicodemus","Peter & John","Mary & Martha","Pilate & Herod"], a: 0 }
+        ],
+        verseFill: {
+          base: "He said, It is ____: and he bowed his head, and gave up the ____.",
+          choices: ["finished","ghost","done","spirit"],
+          missing: ["finished","ghost"]
+        },
+        order: {
+          prompt: "Order the crucifixion events:",
+          steps: [
+            "Soldiers cast lots for His coat",
+            "Jesus commits His mother Mary to John",
+            "Jesus says 'It is finished' and dies"
+          ]
+        }
+      },
+      {
+        num: 20,
+        title: "The Empty Tomb",
+        summary: `Mary Magdalene finds the empty tomb. Jesus appears to her, then to the disciples. Thomas doubts until he sees Jesus' scars.`,
+        keyVerse: { text: "Thomas answered and said unto him, My Lord and my God.", ref: "John 20:28" },
+        quiz: [
+          { q: "Who was first to the sepulchre?", options: ["Peter","John","Mary Magdalene","Thomas"], a: 2 },
+          { q: "Which disciple outran Peter?", options: ["John (the other disciple)","James","Andrew","Philip"], a: 0 },
+          { q: "What did Thomas need to see?", options: ["A miracle","The print of the nails","A ghost","The cross"], a: 1 }
+        ],
+        verseFill: {
+          base: "Blessed are they that have not ____, and yet have ____.",
+          choices: ["seen","believed","heard","known"],
+          missing: ["seen","believed"]
+        },
+        order: {
+          prompt: "Resurrection timeline:",
+          steps: [
+            "Mary Magdalene sees the stone taken away",
+            "Jesus appears to the disciples without Thomas",
+            "Jesus tells Thomas to reach hither his hand"
+          ]
+        }
+      },
+      {
+        num: 21,
+        title: "Breakfast by the Sea",
+        summary: `Jesus appears at the Sea of Tiberias. He helps them catch 153 fish. He asks Peter 'Lovest thou me?' three times to restore him.`,
+        keyVerse: { text: "He saith unto him, Feed my sheep.", ref: "John 21:17" },
+        quiz: [
+          { q: "How many fish did they catch?", options: ["100","153","12","40"], a: 1 },
+          { q: "What was Jesus doing on the shore?", options: ["Sleeping","Cooking breakfast","Preaching","Building a boat"], a: 1 },
+          { q: "What did Jesus ask Peter three times?", options: ["Do you fear me?","Lovest thou me?","Will you serve me?","Where are you going?"], a: 1 }
+        ],
+        verseFill: {
+          base: "He saith unto him the third time, ____ thou me? ... Feed my ____.",
+          choices: ["Lovest","sheep","Knowest","lambs"],
+          missing: ["Lovest","sheep"]
+        },
+        order: {
+          prompt: "Order the final chapter:",
+          steps: [
+            "Disciples cast the net on the right side",
+            "Jesus invites them to come and dine",
+            "Jesus restores Peter asking 'Lovest thou me?'"
+          ]
+        }
+      }
+    ];
+
+    /***************************************
+     * Persistence
+     **************************************/
+    const LS_KEY = 'jjohn_progress_v2'; // version bumped to clear old bad data if present
+    const defaultProgress = { tokens: 0, chapterScores: {}, unlocked: 1 };
+    
+    function loadProgress(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {...defaultProgress}; }catch(e){ return {...defaultProgress}; }
+    }
+    function saveProgress(){ localStorage.setItem(LS_KEY, JSON.stringify(progress)); }
+    let progress = loadProgress();
+
+    /***************************************
+     * UI Helpers
+     **************************************/
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    function toast(msg){
+      const t = $('#toast'); t.textContent = msg; t.style.display='block';
+      setTimeout(()=> t.style.display='none', 1600);
+    }
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+      return a;
+    }
+
+    /***************************************
+     * Chapter List (Map)
+     **************************************/
+    const chapterList = $('#chapterList');
+    function renderChapterList(){
+      chapterList.innerHTML = '';
+      chapters.forEach(ch => {
+        const item = document.createElement('div');
+        item.className = 'chapter-item';
+        const locked = ch.num > progress.unlocked;
+        if(locked) item.classList.add('locked');
+        item.dataset.chapter = ch.num;
+        item.innerHTML = `
+          <div>
+            <div class="title">Ch ${ch.num}: ${ch.title}</div>
+            <div class="meta">${ch.summary.substring(0,55)}...</div>
+          </div>
+          <div style="text-align:right">
+            <div class="token">Score: ${progress.chapterScores[ch.num]||0}</div>
+          </div>
+        `;
+        if(!locked){ item.addEventListener('click',() => openChapter(ch.num)); }
+        chapterList.appendChild(item);
+      });
+    }
+
+    /***************************************
+     * Tabs & Stage
+     **************************************/
+    let currentTab = 'story';
+    let currentChapter = 1;
+
+    $$('.tab').forEach(t => t.addEventListener('click', () => {
+      $$('.tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      currentTab = t.dataset.tab;
+      renderStage();
+    }));
+
+    function openChapter(n){
+      currentChapter = n; currentTab = 'story';
+      $$('.tab').forEach(x=>{
+        x.classList.remove('active');
+        if(x.dataset.tab==='story') x.classList.add('active');
+      });
+      $('#chapterStatus').textContent = `Chapter ${n} / 21`;
+      renderStage();
+    }
+
+    function renderStage(){
+      const ch = chapters.find(c=>c.num===currentChapter);
+      const wrap = $('#tabContent');
+      wrap.innerHTML = '';
+      if(currentTab==='story'){
+        const el = document.createElement('div');
+        el.className='story';
+        el.innerHTML = `
+          <h3>Chapter ${ch.num}: ${ch.title}</h3>
+          <div>${ch.summary}</div>
+          <div class="key-verse">“${ch.keyVerse?.text||'—'}” <br><small>— ${ch.keyVerse?.ref||''}</small></div>
+          <div class="progress"><div style="width:${Math.min((progress.chapterScores[ch.num]||0),100)}%"></div></div>
+          <p><small>Earn at least <b>30 tokens</b> in this chapter to unlock the next one. Perfect score yields a bonus!</small></p>
+          <div class="controls">
+            <button class="btn" onclick="switchTo('quiz')">Start Quiz</button>
+          </div>`;
+        wrap.appendChild(el);
+      }
+      if(currentTab==='quiz') renderQuiz(ch);
+      if(currentTab==='verse') renderVerse(ch);
+      if(currentTab==='order') renderOrder(ch);
+    }
+
+    function switchTo(tab){
+      currentTab = tab; $$('.tab').forEach(x=>{x.classList.toggle('active', x.dataset.tab===tab)}); renderStage();
+    }
+
+    /***************************************
+     * Mini-game: Multiple Choice Quiz
+     **************************************/
+    function renderQuiz(ch){
+      const el = document.createElement('div');
+      el.className='gamebox';
+      const questions = shuffle(ch.quiz).slice(0,3);
+      let score = 0; let answered = 0;
+
+      questions.forEach((q,i)=>{
+        const box = document.createElement('div'); box.className='question';
+        box.innerHTML = `<div style="font-weight:700; margin-bottom:8px">Q${i+1}. ${q.q}</div>`;
+        const ansWrap = document.createElement('div'); ansWrap.className='answers';
+        const opts = shuffle(q.options.map((t,idx)=>({t,idx})));
+        opts.forEach(opt=>{
+          const btn = document.createElement('button'); btn.className='answer'; btn.textContent = opt.t;
+          btn.addEventListener('click',()=>{
+            if(btn.classList.contains('correct')||btn.classList.contains('wrong')) return;
+            answered++;
+            if(opt.idx===q.a){ btn.classList.add('correct'); score+=10; toast('+10 Faith Tokens!'); }
+            else { btn.classList.add('wrong'); }
+            // mark others
+            Array.from(ansWrap.children).forEach(c=>{
+              c.disabled = true;
+              const text=c.textContent;
+              if(text===q.options[q.a]) c.classList.add('correct');
+            });
+          });
+          ansWrap.appendChild(btn);
+        });
+        box.appendChild(ansWrap);
+        el.appendChild(box);
+      });
+
+      const controls = document.createElement('div'); controls.className='controls';
+      const submit = document.createElement('button'); submit.className='btn'; submit.textContent='Finish Quiz';
+      submit.addEventListener('click',()=>{
+        finalizeChapterScore(ch.num, score);
+        switchTo('verse');
+      });
+      controls.appendChild(submit); el.appendChild(controls);
+      $('#tabContent').appendChild(el);
+    }
+
+    /***************************************
+     * Mini-game: Verse Fill-in-the-Blank
+     **************************************/
+    function renderVerse(ch){
+      const el = document.createElement('div'); el.className='gamebox';
+      const info = document.createElement('div'); info.innerHTML = `<div class="question"><b>Fill in the missing word(s)</b><br>${ch.verseFill.base}</div>`;
+      el.appendChild(info);
+
+      let needed = (ch.verseFill.missing||[]).slice();
+      let gained=0;
+      const choices = shuffle(ch.verseFill.choices);
+
+      const bank = document.createElement('div'); bank.className='answers';
+      choices.forEach(word=>{
+        const btn = document.createElement('button'); btn.className='answer'; btn.textContent=word;
+        btn.addEventListener('click',()=>{
+          if(needed.length===0){ toast('Great! Move on.'); return; }
+          const want = needed[0];
+          if(word.toLowerCase()===want.toLowerCase()){
+            btn.classList.add('correct'); btn.disabled=true; needed.shift(); gained+=10; toast('+10 Faith Tokens!');
+            if(needed.length===0){ finalizeChapterScore(ch.num, gained); }
+          }else{
+            btn.classList.add('wrong'); setTimeout(()=>btn.classList.remove('wrong'), 650);
+          }
+        });
+        bank.appendChild(btn);
+      });
+      el.appendChild(bank);
+
+      const controls = document.createElement('div'); controls.className='controls';
+      const next = document.createElement('button'); next.className='btn'; next.textContent='Next: Order Events';
+      next.addEventListener('click',()=> switchTo('order'));
+      controls.appendChild(next); el.appendChild(controls);
+
+      $('#tabContent').appendChild(el);
+    }
+
+    /***************************************
+     * Mini-game: Order Events (Drag + Drop)
+     **************************************/
+    function renderOrder(ch){
+      const el = document.createElement('div'); el.className='gamebox';
+      const prompt = document.createElement('div'); prompt.className='question'; prompt.innerHTML = `<b>${ch.order.prompt}</b>`;
+      el.appendChild(prompt);
+
+      const pool = document.createElement('div'); pool.className='drag-list';
+      const target = document.createElement('div'); target.className='drop-zone'; target.textContent='Drop in order here';
+      const steps = shuffle(ch.order.steps);
+
+      steps.forEach((s,idx)=>{
+        const chip = document.createElement('div'); chip.className='drag-item'; chip.textContent=s; chip.draggable=true; chip.dataset.idx=ch.order.steps.indexOf(s);
+        chip.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain', JSON.stringify({text:s, idx:chip.dataset.idx})); });
+        
+        // Touch support for mobile
+        chip.addEventListener('click', ()=>{
+          if(chip.parentElement === pool) target.appendChild(chip);
+          else pool.appendChild(chip);
+        });
+
+        pool.appendChild(chip);
+      });
+      
+      target.addEventListener('dragover', e=> e.preventDefault());
+      target.addEventListener('drop', e=>{
+        e.preventDefault();
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        // Find existing or create new
+        const existing = Array.from(pool.children).find(c=>c.textContent===data.text) || Array.from(target.children).find(c=>c.textContent===data.text);
+        if(existing) target.appendChild(existing);
+      });
+
+      el.appendChild(pool); el.appendChild(target);
+
+      const controls = document.createElement('div'); controls.className='controls';
+      const check = document.createElement('button'); check.className='btn'; check.textContent='Check Order';
+      check.addEventListener('click',()=>{
+        const seq = Array.from(target.children).map(x=>Number(x.dataset.idx));
+        if(seq.length !== ch.order.steps.length){ toast('Place all items first.'); return; }
+        const correct = seq.every((n,i)=> n===i);
+        if(correct){ toast('Perfect order! +20 Tokens'); finalizeChapterScore(ch.num, 20); maybeUnlockNext(ch.num); switchTo('story'); }
+        else { toast('Not quite—try swapping a few!'); }
+      });
+      controls.appendChild(check);
+
+      const back = document.createElement('button'); back.className='btn ghost'; back.textContent='Back to Story'; back.addEventListener('click',()=> switchTo('story'));
+      controls.appendChild(back);
+
+      el.appendChild(controls);
+      $('#tabContent').appendChild(el);
+    }
+
+    /***************************************
+     * Scoring & Unlocking
+     **************************************/
+    function finalizeChapterScore(chNum, add){
+      // Cap score per chapter slightly to prevent infinite grinding on same ch
+      const current = progress.chapterScores[chNum]||0;
+      if(current > 80 && add > 0) return; // simple cap
+
+      progress.chapterScores[chNum] = current + add;
+      progress.tokens = Object.values(progress.chapterScores).reduce((a,b)=>a+b,0);
+      saveProgress();
+      updateHeader();
+    }
+
+    function maybeUnlockNext(chNum){
+      const score = progress.chapterScores[chNum]||0;
+      if(score>=30 && progress.unlocked < 21 && progress.unlocked === chNum){
+        progress.unlocked = chNum+1;
+        saveProgress(); renderChapterList(); toast(`Chapter ${chNum+1} unlocked!`);
+      }
+    }
+
+    function updateHeader(){
+      $('#tokenCount').textContent = `Faith Tokens: ${progress.tokens}`;
+      $('#chapterStatus').textContent = `Chapter ${currentChapter} / 21`;
+    }
+
+    /***************************************
+     * Dev: Self Tests (basic runtime checks)
+     **************************************/
+    function runSelfTests(){
+      const errs = [];
+      chapters.forEach(ch => {
+        if(typeof ch.num !== 'number') errs.push(`Chapter key 'num' missing.`);
+        if(!Array.isArray(ch.quiz) || ch.quiz.length < 3) errs.push(`Chapter ${ch.num}: quiz needs 3+ questions.`);
+        ch.quiz.forEach((q,qi)=>{
+          if(!Array.isArray(q.options) || q.options.length<2) errs.push(`Chapter ${ch.num} Q${qi+1}: options missing.`);
+          if(q.a>=q.options.length) errs.push(`Chapter ${ch.num} Q${qi+1}: answer index invalid.`);
+        });
+        if(ch.verseFill){
+          const miss = ch.verseFill.missing || [];
+          miss.forEach((m)=>{
+            if(!ch.verseFill.choices.includes(m)) errs.push(`Chapter ${ch.num}: verseFill missing word '${m}' not in choices.`);
+          });
+        }
+        if(ch.order){
+          if(!Array.isArray(ch.order.steps) || ch.order.steps.length<3) errs.push(`Chapter ${ch.num}: order.steps needs 3 items.`);
+        }
+      });
+      return errs;
+    }
+
+    function showTestStatus(){
+      const badge = document.getElementById('testStatus');
+      const problems = runSelfTests();
+      if(problems.length===0){
+        badge.textContent = 'Tests: ✅ All passed';
+        badge.title = 'All basic checks passed. Enjoy!';
+      } else {
+        badge.textContent = `Tests: ⚠️ ${problems.length} issue(s)`;
+        badge.title = problems.join('\n');
+        console.warn('Self-test problems:', problems);
+      }
+    }
+
+    /***************************************
+     * Boot
+     **************************************/
+    document.getElementById('resetBtn').addEventListener('click',()=>{
+      if(confirm('Reset all progress?')){ localStorage.removeItem(LS_KEY); progress = {...defaultProgress}; renderChapterList(); renderStage(); updateHeader(); }
+    });
+
+    // Make global for inline calls
+    window.switchTo = switchTo;
+
+    renderChapterList();
+    openChapter(progress.unlocked || 1);
+    updateHeader();
+    showTestStatus();
+  </script>
+</body>
+</html>
